@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sơ Đồ & Quản Lý Sân Cầu Lông Thông Minh</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Font Inter / Plus Jakarta Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        
+        /* Realistic Court Styling */
+        .badminton-court {
+            background-color: #0d6efd;
+            background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.4);
+        }
+
+        .court-net {
+            background: repeating-linear-gradient(
+                90deg,
+                rgba(255,255,255,0.95),
+                rgba(255,255,255,0.95) 4px,
+                transparent 4px,
+                transparent 8px
+            );
+            height: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-900 flex flex-col antialiased pb-6 text-sm">
+
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-40 border-b border-slate-800 py-2">
+        <div class="max-w-[1700px] mx-auto px-4 flex justify-between items-center gap-3">
+            <div class="flex items-center gap-2.5">
+                <div class="p-2 bg-emerald-500 text-slate-950 rounded-xl shadow-md font-black text-lg flex items-center justify-center">
+                    <i data-lucide="trophy" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-black tracking-tight leading-none flex items-center gap-2 text-white">
+                        BADMINTON MATCHMAKER
+                        <span class="text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">PRO</span>
+                    </h1>
+                    <p class="text-[11px] text-slate-400 font-semibold">Tự động chia sân & Cân bằng cặp đấu</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2.5">
+                <button id="btn-auto-match" onclick="app.autoMatchmaking()" class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black px-5 py-2.5 rounded-xl shadow-lg transition-all transform active:scale-95 flex items-center gap-2 text-sm tracking-wide">
+                    <i data-lucide="sparkles" class="w-5 h-5 fill-current"></i>
+                    <span>XẾP SÂN TỰ ĐỘNG (TOÀN BỘ)</span>
+                </button>
+                <button onclick="app.resetAllData()" title="Đặt lại toàn bộ dữ liệu" class="p-2.5 bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white rounded-xl transition border border-slate-700">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-[1700px] mx-auto px-4 py-3 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-3.5">
+
+        <!-- Left Column: Add Player & Waiting Queue (3 cols) -->
+        <section class="lg:col-span-3 flex flex-col gap-3">
+            
+            <!-- Add Player Form -->
+            <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-xs font-black uppercase text-slate-800 mb-2.5 flex items-center gap-2 tracking-wider">
+                    <i data-lucide="user-plus" class="w-4 h-4 text-emerald-600"></i>
+                    Thêm Thành Viên
+                </h2>
+                <form id="add-player-form" onsubmit="app.handleAddPlayer(event)" class="space-y-2">
+                    <div>
+                        <input type="text" id="player-name" required placeholder="Nhập tên người chơi..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition font-bold text-slate-900 text-sm">
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="player-level" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition font-bold text-slate-800 text-xs">
+                            <option value="C">C - Mới chơi / Yếu</option>
+                            <option value="B2" selected>B2 - Trung bình yếu</option>
+                            <option value="B1">B1 - Trung bình khá</option>
+                            <option value="A">A - Khá / Tốt</option>
+                        </select>
+                        <button type="submit" class="bg-slate-900 hover:bg-emerald-600 text-white font-extrabold px-4 py-2 rounded-xl transition shadow-sm shrink-0 text-xs flex items-center gap-1">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Thêm
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Waiting Players Queue -->
+            <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col min-h-[220px]">
+                <div class="flex justify-between items-center mb-2.5">
+                    <h2 class="text-xs font-black uppercase text-slate-800 flex items-center gap-2 tracking-wider">
+                        <i data-lucide="clock" class="w-4 h-4 text-amber-500"></i>
+                        Đang Chờ Ở Ngoài
+                    </h2>
+                    <span id="waiting-count-badge" class="bg-amber-500 text-slate-950 font-black text-xs px-2.5 py-0.5 rounded-full">0 người</span>
+                </div>
+
+                <div id="waiting-list-container" class="space-y-1.5 overflow-y-auto max-h-[320px] pr-1 flex-1">
+                    <!-- Dynamic List of Waiting Players -->
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Right Column: Courts Grid & Stats Table (9 cols) -->
+        <section class="lg:col-span-9 flex flex-col gap-3">
+
+            <!-- Courts Container Header -->
+            <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-2.5">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="layout-grid" class="w-4 h-4 text-indigo-600"></i>
+                        <h2 class="text-xs font-black uppercase text-slate-800 tracking-wider">
+                            Sơ Đồ Thi Đấu (Tối đa 4 sân hiển thị trọn màn hình)
+                        </h2>
+                    </div>
+                    <button onclick="app.addCourt()" class="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-extrabold rounded-lg text-xs transition flex items-center gap-1 border border-emerald-200">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Thêm Sân
+                    </button>
+                </div>
+
+                <!-- Courts Grid - Fits 4 Courts seamlessly in View (2x2 Grid) -->
+                <div id="courts-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <!-- Dynamic Compact Court Cards -->
+                </div>
+            </div>
+
+            <!-- All Players Stats & Management Table -->
+            <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-xs font-black uppercase text-slate-800 flex items-center gap-2 tracking-wider">
+                        <i data-lucide="users" class="w-4 h-4 text-blue-600"></i>
+                        Thống Kê Chi Tiết Lượt Đấu & Chờ
+                    </h2>
+                    <span id="total-players-badge" class="text-xs bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full font-bold">Tổng: 0 người</span>
+                </div>
+
+                <div class="overflow-x-auto max-h-[180px]">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-100 text-slate-600 uppercase text-[10px] font-extrabold tracking-wider sticky top-0">
+                            <tr>
+                                <th class="py-2 px-3 rounded-l-lg">Tên thành viên</th>
+                                <th class="py-2 px-2 text-center">Trình độ</th>
+                                <th class="py-2 px-2 text-center">Số trận đã đấu</th>
+                                <th class="py-2 px-2 text-center">Số lượt đã chờ</th>
+                                <th class="py-2 px-2 text-center">Trạng thái</th>
+                                <th class="py-2 px-3 text-right rounded-r-lg">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="players-table-body" class="divide-y divide-slate-100 font-medium text-slate-700">
+                            <!-- Dynamic Table Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <div id="toast" class="fixed bottom-4 right-4 z-50 transform translate-y-16 opacity-0 transition-all duration-300 pointer-events-none bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2.5 border border-slate-700 text-xs">
+        <i id="toast-icon" data-lucide="info" class="w-4 h-4 text-emerald-400"></i>
+        <span id="toast-msg" class="font-bold">Thông báo</span>
+    </div>
+
+    <script>
+        class BadmintonApp {
+            constructor() {
+                this.players = [];
+                this.courts = [
+                    { id: 1, name: "SÂN 1", mode: "doubles", teamA: [], teamB: [] },
+                    { id: 2, name: "SÂN 2", mode: "doubles", teamA: [], teamB: [] },
+                    { id: 3, name: "SÂN 3", mode: "doubles", teamA: [], teamB: [] },
+                    { id: 4, name: "SÂN 4", mode: "doubles", teamA: [], teamB: [] }
+                ];
+                
+                this.pairHistory = {};
+                this.levelPoints = { 'C': 1, 'B2': 2, 'B1': 3, 'A': 4 };
+                this.levelBadges = {
+                    'C': 'bg-slate-200 text-slate-800 border-slate-300',
+                    'B2': 'bg-blue-100 text-blue-800 border-blue-300',
+                    'B1': 'bg-indigo-100 text-indigo-800 border-indigo-300',
+                    'A': 'bg-purple-100 text-purple-800 border-purple-300'
+                };
+
+                this.loadLocalStorage();
+                this.init();
+            }
+
+            init() {
+                this.render();
+            }
+
+            saveLocalStorage() {
+                const data = {
+                    players: this.players,
+                    courts: this.courts,
+                    pairHistory: this.pairHistory
+                };
+                localStorage.setItem('badminton_app_v3_data', JSON.stringify(data));
+            }
+
+            loadLocalStorage() {
+                const saved = localStorage.getItem('badminton_app_v3_data');
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        this.players = parsed.players || [];
+                        this.courts = parsed.courts || [];
+                        this.pairHistory = parsed.pairHistory || {};
+                    } catch (e) {
+                        console.error("Failed to parse saved data", e);
+                    }
+                } else {
+                    // Seed initial demo players
+                    this.players = [
+                        { id: '1', name: 'Nguyễn Văn A', level: 'A', played: 0, waiting: 0, resting: false },
+                        { id: '2', name: 'Trần Thị B', level: 'B1', played: 0, waiting: 0, resting: false },
+                        { id: '3', name: 'Lê Văn C', level: 'B2', played: 0, waiting: 0, resting: false },
+                        { id: '4', name: 'Phạm Văn D', level: 'C', played: 0, waiting: 0, resting: false },
+                        { id: '5', name: 'Hoàng Văn E', level: 'B1', played: 0, waiting: 0, resting: false },
+                        { id: '6', name: 'Đỗ Thị F', level: 'B2', played: 0, waiting: 0, resting: false },
+                        { id: '7', name: 'Vũ Văn G', level: 'C', played: 0, waiting: 0, resting: false },
+                        { id: '8', name: 'Đặng Văn H', level: 'A', played: 0, waiting: 0, resting: false },
+                        { id: '9', name: 'Bùi Thị I', level: 'B2', played: 0, waiting: 0, resting: false },
+                        { id: '10', name: 'Phan Văn K', level: 'B1', played: 0, waiting: 0, resting: false }
+                    ];
+                }
+            }
+
+            resetAllData() {
+                if (confirm("Bạn có chắc muốn làm mới lại toàn bộ dữ liệu?")) {
+                    localStorage.removeItem('badminton_app_v3_data');
+                    this.players = [];
+                    this.courts = [
+                        { id: 1, name: "SÂN 1", mode: "doubles", teamA: [], teamB: [] },
+                        { id: 2, name: "SÂN 2", mode: "doubles", teamA: [], teamB: [] },
+                        { id: 3, name: "SÂN 3", mode: "doubles", teamA: [], teamB: [] },
+                        { id: 4, name: "SÂN 4", mode: "doubles", teamA: [], teamB: [] }
+                    ];
+                    this.pairHistory = {};
+                    this.render();
+                    this.showToast("Đã khôi phục dữ liệu ban đầu!");
+                }
+            }
+
+            handleAddPlayer(event) {
+                event.preventDefault();
+                const nameInput = document.getElementById('player-name');
+                const levelInput = document.getElementById('player-level');
+
+                const name = nameInput.value.trim();
+                const level = levelInput.value;
+
+                if (!name) return;
+
+                const newPlayer = {
+                    id: Date.now().toString(),
+                    name: name,
+                    level: level,
+                    played: 0,
+                    waiting: 0,
+                    resting: false
+                };
+
+                this.players.push(newPlayer);
+                nameInput.value = '';
+                this.saveLocalStorage();
+                this.render();
+                this.showToast(`Đã thêm thành viên "${name}" (${level})`);
+            }
+
+            toggleResting(playerId) {
+                const player = this.players.find(p => p.id === playerId);
+                if (player) {
+                    player.resting = !player.resting;
+                    
+                    if (player.resting) {
+                        this.courts.forEach(court => {
+                            court.teamA = court.teamA.filter(p => p.id !== playerId);
+                            court.teamB = court.teamB.filter(p => p.id !== playerId);
+                        });
+                    }
+
+                    this.saveLocalStorage();
+                    this.render();
+                    this.showToast(player.resting ? `"${player.name}" tạm nghỉ` : `"${player.name}" sẵn sàng`);
+                }
+            }
+
+            deletePlayer(playerId) {
+                const player = this.players.find(p => p.id === playerId);
+                if (!player) return;
+
+                if (confirm(`Bạn có muốn xóa thành viên "${player.name}"?`)) {
+                    this.courts.forEach(court => {
+                        court.teamA = court.teamA.filter(p => p.id !== playerId);
+                        court.teamB = court.teamB.filter(p => p.id !== playerId);
+                    });
+
+                    this.players = this.players.filter(p => p.id !== playerId);
+                    this.saveLocalStorage();
+                    this.render();
+                    this.showToast(`Đã xóa "${player.name}"`);
+                }
+            }
+
+            addCourt() {
+                const newId = this.courts.length > 0 ? Math.max(...this.courts.map(c => c.id)) + 1 : 1;
+                this.courts.push({
+                    id: newId,
+                    name: `SÂN ${newId}`,
+                    mode: "doubles",
+                    teamA: [],
+                    teamB: []
+                });
+                this.saveLocalStorage();
+                this.render();
+                this.showToast(`Đã thêm Sân ${newId}`);
+            }
+
+            removeCourt(courtId) {
+                if (this.courts.length <= 1) {
+                    this.showToast("Cần giữ ít nhất 1 sân!", "warning");
+                    return;
+                }
+                
+                this.courts = this.courts.filter(c => c.id !== courtId);
+                this.saveLocalStorage();
+                this.render();
+                this.showToast("Đã bớt 1 sân");
+            }
+
+            changeCourtMode(courtId, mode) {
+                const court = this.courts.find(c => c.id === courtId);
+                if (court) {
+                    court.mode = mode;
+                    court.teamA = [];
+                    court.teamB = [];
+                    this.saveLocalStorage();
+                    this.render();
+                    this.showToast(`${court.name}: Chế độ ${mode === 'doubles' ? 'Đôi' : 'Đơn'}`);
+                }
+            }
+
+            shuffleSingleCourt(courtId) {
+                const court = this.courts.find(c => c.id === courtId);
+                if (!court) return;
+
+                const currentPlayers = [...court.teamA, ...court.teamB];
+                if (currentPlayers.length < (court.mode === 'doubles' ? 4 : 2)) {
+                    this.showToast("Sân chưa đủ người để đổi cặp!", "warning");
+                    return;
+                }
+
+                const newMatch = this.optimizeTeams(currentPlayers, court.mode);
+                court.teamA = newMatch.teamA;
+                court.teamB = newMatch.teamB;
+
+                this.saveLocalStorage();
+                this.render();
+                this.showToast(`Đã đổi cặp cân bằng riêng cho ${court.name}!`);
+            }
+
+            isPlayerInCourt(playerId) {
+                for (let court of this.courts) {
+                    if (court.teamA.some(p => p.id === playerId) || court.teamB.some(p => p.id === playerId)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            autoMatchmaking() {
+                const activePlayers = this.players.filter(p => !p.resting);
+                if (activePlayers.length === 0) {
+                    this.showToast("Chưa có thành viên nào ở trạng thái sẵn sàng!", "warning");
+                    return;
+                }
+
+                // Increment match played counter for players currently on court
+                this.courts.forEach(court => {
+                    const courtPlayers = [...court.teamA, ...court.teamB];
+                    courtPlayers.forEach(cp => {
+                        const p = this.players.find(pl => pl.id === cp.id);
+                        if (p) {
+                            p.played += 1;
+                            p.waiting = 0;
+                        }
+                    });
+
+                    this.recordMatchHistory(court.teamA, court.teamB);
+                });
+
+                let totalSlotsNeeded = 0;
+                this.courts.forEach(c => {
+                    totalSlotsNeeded += (c.mode === 'doubles' ? 4 : 2);
+                });
+
+                let candidates = [...activePlayers];
+                candidates.sort((a, b) => {
+                    if (a.played !== b.played) return a.played - b.played;
+                    return b.waiting - a.waiting;
+                });
+
+                const selectedForPlay = candidates.slice(0, totalSlotsNeeded);
+                const unselectedPlayers = candidates.slice(totalSlotsNeeded);
+
+                unselectedPlayers.forEach(p => {
+                    p.waiting += 1;
+                });
+
+                let pool = [...selectedForPlay];
+
+                this.courts.forEach(court => {
+                    court.teamA = [];
+                    court.teamB = [];
+                });
+
+                for (let court of this.courts) {
+                    const requiredCount = (court.mode === 'doubles' ? 4 : 2);
+                    if (pool.length < requiredCount) break;
+
+                    const group = pool.splice(0, requiredCount);
+                    const matchFormat = this.optimizeTeams(group, court.mode);
+                    court.teamA = matchFormat.teamA;
+                    court.teamB = matchFormat.teamB;
+                }
+
+                this.saveLocalStorage();
+                this.render();
+                this.showToast("Đã xếp lượt mới cân bằng cho toàn bộ sân!");
+            }
+
+            recordMatchHistory(teamA, teamB) {
+                const addPair = (p1, p2) => {
+                    const key = [p1.id, p2.id].sort().join('-');
+                    this.pairHistory[key] = (this.pairHistory[key] || 0) + 1;
+                };
+
+                if (teamA.length === 2) addPair(teamA[0], teamA[1]);
+                if (teamB.length === 2) addPair(teamB[0], teamB[1]);
+            }
+
+            optimizeTeams(playersGroup, mode) {
+                if (mode === 'singles' || playersGroup.length === 2) {
+                    return {
+                        teamA: [playersGroup[0]],
+                        teamB: [playersGroup[1]]
+                    };
+                }
+
+                const combinations = [
+                    { teamA: [playersGroup[0], playersGroup[1]], teamB: [playersGroup[2], playersGroup[3]] },
+                    { teamA: [playersGroup[0], playersGroup[2]], teamB: [playersGroup[1], playersGroup[3]] },
+                    { teamA: [playersGroup[0], playersGroup[3]], teamB: [playersGroup[1], playersGroup[2]] }
+                ];
+
+                let bestCombination = combinations[0];
+                let minPenalty = Infinity;
+
+                combinations.forEach(combo => {
+                    const scoreA = combo.teamA.reduce((sum, p) => sum + this.levelPoints[p.level], 0);
+                    const scoreB = combo.teamB.reduce((sum, p) => sum + this.levelPoints[p.level], 0);
+                    const skillDiff = Math.abs(scoreA - scoreB);
+
+                    const keyA = [combo.teamA[0].id, combo.teamA[1].id].sort().join('-');
+                    const keyB = [combo.teamB[0].id, combo.teamB[1].id].sort().join('-');
+                    const teammatePenalty = (this.pairHistory[keyA] || 0) + (this.pairHistory[keyB] || 0);
+
+                    const totalPenalty = (skillDiff * 10) + (teammatePenalty * 5);
+
+                    if (totalPenalty < minPenalty) {
+                        minPenalty = totalPenalty;
+                        bestCombination = combo;
+                    }
+                });
+
+                return bestCombination;
+            }
+
+            render() {
+                this.renderWaitingList();
+                this.renderCourts();
+                this.renderPlayersTable();
+                
+                if (window.lucide) {
+                    lucide.createIcons();
+                }
+            }
+
+            renderWaitingList() {
+                const container = document.getElementById('waiting-list-container');
+                const badge = document.getElementById('waiting-count-badge');
+
+                const waitingPlayers = this.players.filter(p => !p.resting && !this.isPlayerInCourt(p.id));
+                badge.innerText = `${waitingPlayers.length} người`;
+
+                if (waitingPlayers.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-6 text-slate-400 border border-dashed border-slate-200 rounded-xl">
+                            <i data-lucide="check-circle" class="w-5 h-5 mx-auto mb-1 text-emerald-500 opacity-60"></i>
+                            <p class="text-xs font-bold text-slate-600">Không có ai chờ ở ngoài</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = waitingPlayers.map(p => `
+                    <div class="p-2 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center hover:bg-slate-100 transition">
+                        <div class="flex items-center gap-2 truncate">
+                            <span class="font-extrabold text-slate-900 text-sm truncate">${p.name}</span>
+                            <span class="px-1.5 py-0.2 text-[10px] rounded border font-black ${this.levelBadges[p.level]} shrink-0">${p.level}</span>
+                        </div>
+                        <span class="bg-amber-100 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-200 shrink-0">
+                            Chờ ${p.waiting}
+                        </span>
+                    </div>
+                `).join('');
+            }
+
+            renderCourts() {
+                const container = document.getElementById('courts-grid');
+                container.innerHTML = this.courts.map(court => {
+                    const isDoubles = court.mode === 'doubles';
+
+                    return `
+                        <div class="bg-slate-900 rounded-2xl overflow-hidden shadow-sm border border-slate-800 flex flex-col">
+                            <!-- Court Control Header -->
+                            <div class="px-3 py-1.5 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
+                                <div class="flex items-center gap-2">
+                                    <div class="bg-emerald-500 text-slate-950 px-2.5 py-0.5 rounded-md font-black text-xs">
+                                        ${court.name}
+                                    </div>
+                                    <select onchange="app.changeCourtMode(${court.id}, this.value)" class="bg-slate-800 border border-slate-700 text-white font-bold text-xs rounded-md px-2 py-0.5 outline-none">
+                                        <option value="doubles" ${isDoubles ? 'selected' : ''}>Đôi (4P)</option>
+                                        <option value="singles" ${!isDoubles ? 'selected' : ''}>Đơn (2P)</option>
+                                    </select>
+                                </div>
+
+                                <div class="flex items-center gap-1.5">
+                                    <button onclick="app.shuffleSingleCourt(${court.id})" class="px-2.5 py-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black rounded-lg text-xs transition shadow flex items-center gap-1">
+                                        <i data-lucide="shuffle" class="w-3.5 h-3.5"></i> Đổi Cặp
+                                    </button>
+                                    <button onclick="app.removeCourt(${court.id})" title="Xóa sân" class="p-1 text-slate-400 hover:text-rose-400 bg-slate-800 rounded-lg">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Court Layout Optimized for Large Names -->
+                            <div class="p-2 badminton-court m-1.5 rounded-xl relative flex flex-col justify-between gap-2">
+                                
+                                <!-- Team A -->
+                                <div class="grid grid-cols-${isDoubles ? '2' : '1'} gap-1.5">
+                                    ${this.renderPlayerCard(court.teamA[0], "Vị trí A1", "border-amber-400")}
+                                    ${isDoubles ? this.renderPlayerCard(court.teamA[1], "Vị trí A2", "border-amber-400") : ''}
+                                </div>
+
+                                <!-- Net Line -->
+                                <div class="relative">
+                                    <div class="court-net w-full rounded"></div>
+                                </div>
+
+                                <!-- Team B -->
+                                <div class="grid grid-cols-${isDoubles ? '2' : '1'} gap-1.5">
+                                    ${this.renderPlayerCard(court.teamB[0], "Vị trí B1", "border-sky-400")}
+                                    ${isDoubles ? this.renderPlayerCard(court.teamB[1], "Vị trí B2", "border-sky-400") : ''}
+                                </div>
+
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            renderPlayerCard(player, placeholder, borderColor) {
+                if (!player) {
+                    return `
+                        <div class="bg-slate-950/40 border border-dashed border-white/20 rounded-xl p-2.5 text-center flex items-center justify-center min-h-[46px]">
+                            <span class="text-xs font-bold text-emerald-200/40 uppercase">${placeholder}</span>
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div class="bg-slate-950/95 border-l-4 ${borderColor} border-y border-r border-slate-800 rounded-xl px-3 py-2 flex justify-between items-center shadow-sm">
+                        <span class="font-extrabold text-sm text-white truncate mr-1.5 leading-tight">${player.name}</span>
+                        <span class="px-1.5 py-0.2 rounded border text-[10px] font-black ${this.levelBadges[player.level]} shrink-0">${player.level}</span>
+                    </div>
+                `;
+            }
+
+            renderPlayersTable() {
+                const tbody = document.getElementById('players-table-body');
+                const badge = document.getElementById('total-players-badge');
+                
+                badge.innerText = `Tổng: ${this.players.length} người`;
+
+                if (this.players.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="py-5 text-center text-slate-400 text-xs font-semibold">
+                                Chưa có thành viên nào. Vui lòng thêm người chơi mới!
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = this.players.map(player => {
+                    const inCourt = this.isPlayerInCourt(player.id);
+                    let statusBadge = '';
+
+                    if (player.resting) {
+                        statusBadge = `<span class="bg-slate-200 text-slate-700 text-[10px] px-2 py-0.5 rounded-full font-bold">Tạm nghỉ</span>`;
+                    } else if (inCourt) {
+                        statusBadge = `<span class="bg-emerald-500 text-slate-950 text-[10px] px-2 py-0.5 rounded-full font-black">Trong sân</span>`;
+                    } else {
+                        statusBadge = `<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] px-2 py-0.5 rounded-full font-bold">Chờ (${player.waiting})</span>`;
+                    }
+
+                    return `
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="py-2 px-3 font-extrabold text-slate-900 text-xs">
+                                ${player.name}
+                            </td>
+                            <td class="py-2 px-2 text-center">
+                                <span class="px-2 py-0.5 rounded-md border text-[10px] font-black ${this.levelBadges[player.level]}">
+                                    ${player.level}
+                                </span>
+                            </td>
+                            <td class="py-2 px-2 text-center font-black text-slate-800 text-xs">
+                                ${player.played}
+                            </td>
+                            <td class="py-2 px-2 text-center font-bold text-slate-500 text-xs">
+                                ${player.waiting}
+                            </td>
+                            <td class="py-2 px-2 text-center">
+                                ${statusBadge}
+                            </td>
+                            <td class="py-2 px-3 text-right">
+                                <div class="flex items-center justify-end gap-1">
+                                    <button onclick="app.toggleResting('${player.id}')" title="${player.resting ? 'Sẵn sàng' : 'Cho nghỉ'}" class="p-1.5 rounded-lg border text-[10px] font-bold transition ${player.resting ? 'bg-emerald-500 text-slate-950 border-emerald-600' : 'bg-slate-100 text-slate-700 border-slate-200'}">
+                                        <i data-lucide="${player.resting ? 'play' : 'coffee'}" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                    <button onclick="app.deletePlayer('${player.id}')" title="Xóa" class="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg border border-rose-200 transition">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            showToast(message, type = "success") {
+                const toast = document.getElementById('toast');
+                const msg = document.getElementById('toast-msg');
+                const icon = document.getElementById('toast-icon');
+
+                msg.innerText = message;
+                
+                if (type === "warning") {
+                    icon.setAttribute('data-lucide', 'alert-circle');
+                    icon.className = "w-4 h-4 text-amber-400";
+                } else {
+                    icon.setAttribute('data-lucide', 'check-circle-2');
+                    icon.className = "w-4 h-4 text-emerald-400";
+                }
+
+                if (window.lucide) lucide.createIcons();
+
+                toast.classList.remove('translate-y-16', 'opacity-0');
+                toast.classList.add('translate-y-0', 'opacity-100');
+
+                setTimeout(() => {
+                    toast.classList.remove('translate-y-0', 'opacity-100');
+                    toast.classList.add('translate-y-16', 'opacity-0');
+                }, 2500);
+            }
+        }
+
+        let app;
+        window.addEventListener('DOMContentLoaded', () => {
+            app = new BadmintonApp();
+        });
+    </script>
+</body>
+</html>
